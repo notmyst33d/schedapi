@@ -2,7 +2,7 @@
 Open source API for college schedules
 
 ## Docs
-`cargo run` and go to http://localhost:10000
+`cargo run` and go to http://localhost:10000/docs
 
 ## CSV Schedule Schema (Rust type notation)
 ```
