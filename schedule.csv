@@ -1,0 +1,5 @@
+day,num,week_range,name,lesson_type,teacher,auditorium,even,odd
+1,1,all,Very important meeting,,,1A,,
+
+1,2,2-5,Philosophy,Lecture,Mr. Dinkle,2B,true,
+1,2,6-20,Philosophy,Lecture,Mr. Dinkle,3C,,true
