@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let router: Router<()> = state_router.with_state(state);
 
-    let listener = TcpListener::bind("0.0.0.0:10000").await?;
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", config.port)).await?;
 
     axum::serve(listener, router).await?;
     Ok(())
