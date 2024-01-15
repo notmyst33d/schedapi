@@ -7,6 +7,7 @@ use std::sync::Arc;
 use axum::Router;
 use tokio::fs;
 use tokio::net::TcpListener;
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -29,7 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let state = Arc::new(SharedState { data });
     let state_router: Router<Arc<SharedState>> = Router::new()
         .nest("/schedule", api::schedule::routes())
-        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()));
+        .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()))
+        .layer(CorsLayer::permissive());
 
     let router: Router<()> = state_router.with_state(state);
 
