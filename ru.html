@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>Расписание</title>
+    <style>
+        html,
+        body {
+            color: #ffffff;
+            background-color: #131313;
+            font-family: 'Onest';
+            font-size: 14px;
+            margin: 0px;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+        }
+
+        .row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .center {
+            align-items: center;
+        }
+
+        .expand-w {
+            width: 100%;
+        }
+
+        .header {
+            height: fit-content;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .lesser-header {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .card-header {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .primary-button {
+            color: #000000;
+            background-color: #ffffff;
+            font-weight: 500;
+            border: none;
+            border-radius: 18px;
+            padding: 0px 16px;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        .secondary-button {
+            color: #ffffff;
+            background-color: #2f2f2f;
+            font-weight: 500;
+            border: none;
+            border-radius: 18px;
+            padding: 0px 16px;
+            height: 36px;
+            cursor: pointer;
+        }
+
+        .card {
+            color: #ffffff;
+            width: 320px;
+            background-color: #2f2f2f;
+            border-radius: 18px;
+            padding: 16px;
+        }
+
+        .week-input {
+            width: 96px;
+            height: 36px;
+            border-style: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 0px 16px;
+        }
+
+        .week-text {
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="column" style="padding: 16px">
+        <div class="row" style="padding-bottom: 16px; align-items: center;">
+            <div id="header" class="header" style="padding-right: 16px">
+            </div>
+            <div class="row" style="row-gap: 8px; align-items: center;">
+                <div class="week-text" style="padding-right: 8px;">Неделя:</div>
+                <input class="week-input" style="margin-right: 8px;" type="number" min="1" value="1" placeholder="Неделя" />
+                <button id="week-button-custom" class="primary-button" style="margin-right: 8px;">Получить</button>
+                <button id="week-button-current" class="primary-button" style="margin-right: 8px;">Текущая неделя</button>
+                <button id="week-button-next" class="primary-button">Следующая неделя</button>
+            </div>
+        </div>
+        <div id="info-container" class="lesser-header" style="padding-bottom: 16px;">
+        </div>
+        <div id="schedule-container">
+        </div>
+    </div>
+    <script>
+        const url = new URL(window.location.href);
+
+        const apiUrl = url.searchParams.get("api");
+        const groupName = url.searchParams.get("groupName");
+        let epoch = url.searchParams.get("epoch");
+        if (epoch !== null) {
+            epoch = parseInt(epoch);
+        }
+
+        const weekInput = document.getElementsByClassName("week-input")[0];
+        const weekButtonCustom = document.getElementById("week-button-custom");
+        const weekButtonCurrent = document.getElementById("week-button-current");
+        const weekButtonNext = document.getElementById("week-button-next");
+        const infoContainer = document.getElementById("info-container");
+        const scheduleContainer = document.getElementById("schedule-container");
+        const header = document.getElementById("header");
+
+        const oneDay = 60 * 60 * 24;
+        const oneWeek = oneDay * 7;
+
+        const dayMapping = {
+            0: "Понедельник",
+            1: "Вторник",
+            2: "Среда",
+            3: "Четверг",
+            4: "Пятница",
+            5: "Суббота",
+        };
+
+        const monthMapping = {
+            0: "января",
+            1: "февраля",
+            2: "марта",
+            3: "апреля",
+            4: "мая",
+            5: "июня",
+            6: "июля",
+            7: "августа",
+            8: "сентября",
+            9: "октября",
+            10: "ноября",
+            11: "декабря",
+        };
+
+        function renderHtmlArray(arr) {
+            return arr.join("");
+        }
+
+        function renderScheduleRow(entries) {
+            if (entries.length === 0) {
+                return "";
+            }
+
+            let rowsHtml = [];
+
+            for (const entry of entries) {
+                rowsHtml.push(renderScheduleEntry(entry));
+            }
+
+            return `
+                <div class="row expand-w" style="gap: 16px">
+                    ${renderHtmlArray(rowsHtml)}
+                </div>
+            `;
+        }
+
+        function renderScheduleLesson(lesson, index) {
+            let lessonType = "";
+            let auditorium = "";
+            if (lesson.lesson_type !== undefined) {
+                lessonType = ` ${lesson.lesson_type.toLowerCase()}`;
+            }
+            if (lesson.auditorium !== undefined) {
+                if (lesson.auditorium === "Актовый зал") {
+                    lessonType = `, ${lesson.auditorium.toLowerCase()}`;
+                } else {
+                    lessonType = `, аудитория ${lesson.auditorium.toLowerCase()}`;
+                }
+            }
+            if (lesson.empty !== undefined) {
+                return `<div>${index}. Пусто</div>`;
+            } else {
+                return `<div>${index}. ${lesson.name}${lessonType}${auditorium}</div>`;
+            }
+        }
+
+        function renderScheduleEmpty() {
+            return "<div>Пусто</div>";
+        }
+
+        function renderScheduleEntry(entry) {
+            let lessonsHtml = [];
+
+            if (entry.lessons.length === 0) {
+                lessonsHtml.push(renderScheduleEmpty());
+            }
+
+            let lessonIndex = 1;
+            for (const lesson of entry.lessons) {
+                lessonsHtml.push(renderScheduleLesson(lesson, lessonIndex));
+                lessonIndex += 1;
+            }
+
+            return `
+                <div class="column card">
+                    <div class="card-header">${entry.dayName}</div>
+                    ${renderHtmlArray(lessonsHtml)}
+                </div>
+            `;
+        }
+
+        function renderWeekText(week) {
+            const weekStartDate = new Date(epoch * 1000 + (oneWeek * (week - 1)) * 1000);
+            const weekEndDate = new Date(epoch * 1000 + (oneWeek * (week - 1) + oneDay * 5) * 1000);
+            return `Неделя ${week}, с ${weekStartDate.getDate()} ${monthMapping[weekStartDate.getMonth()]} по ${weekEndDate.getDate()} ${monthMapping[weekEndDate.getMonth()]}`;
+        }
+
+        function getCurrentWeek() {
+            return Math.ceil((Date.now().valueOf() / 1000 - epoch) / 60 / 60 / 24 / 7);
+        }
+
+        async function updateForWeek(week) {
+            infoContainer.innerText = "Получение данных...";
+
+            let totalLength = 0;
+            const response = await fetch(`https://${apiUrl}/schedule?week=${week}`);
+            if (response.status !== 200) {
+                infoContainer.innerText = `API выдал ошибку при получении данных`;
+                scheduleContainer.innerHTML = "";
+                return;
+            }
+min="0"
+            const days = await response.json();
+            for (const day of days) {
+                totalLength += day.length;
+            }
+
+            if (totalLength === 0) {
+                infoContainer.innerText = `Нет данных на неделю ${week}`;
+                scheduleContainer.innerHTML = "";
+                return;
+            }
+
+            let dayIndex = 0;
+            let entries = [];
+            let rowsHtml = [];
+            for (const day of days) {
+                if (entries.length === 2) {
+                    rowsHtml.push(renderScheduleRow(entries));
+                    entries = [];
+                }
+
+                if (dayIndex === 6) {
+                    break;
+                }
+
+                entries.push({
+                    dayName: dayMapping[dayIndex],
+                    lessons: day,
+                });
+
+                dayIndex += 1;
+            }
+
+            scheduleContainer.innerHTML = rowsHtml.join(`<div style="padding-bottom: 16px"></div>`);
+            infoContainer.innerText = renderWeekText(week);
+        }
+
+        function finalizeSetup() {
+            weekInput.value = getCurrentWeek();
+            updateForWeek(getCurrentWeek());
+
+            weekButtonCustom.addEventListener("click", () => {
+                updateForWeek(weekInput.value);
+            });
+
+            weekButtonCurrent.addEventListener("click", () => {
+                weekInput.value = getCurrentWeek();
+                updateForWeek(getCurrentWeek());
+            });
+
+            weekButtonNext.addEventListener("click", () => {
+                weekInput.value = getCurrentWeek() + 1;
+                updateForWeek(getCurrentWeek() + 1);
+            });
+        }
+
+        if (groupName !== null) {
+            header.innerText = `Расписание ${groupName}`;
+        } else {
+            header.innerText = "Расписание";
+        }
+
+        if (apiUrl === null) {
+            infoContainer.innerText = "Параметр api не найден в URL";
+        } else {
+            if (epoch === null) {
+                infoContainer.innerText = "Параметр epoch не найден в URL";
+            } else {
+                finalizeSetup();
+            }
+        }
+    </script>
+</body>
+
+</html>
