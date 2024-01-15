@@ -4,6 +4,9 @@ Open source API for college schedules
 ## Docs
 `cargo run` and go to http://localhost:10000/docs
 
+## Reference frontend
+Code for the reference frontend is located in `frontend` branch
+
 ## CSV Schedule Schema (Rust type notation)
 ```
 day: u8 // Day that the lesson happens on
