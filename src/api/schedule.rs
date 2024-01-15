@@ -85,4 +85,3 @@ pub async fn get_schedule(
 pub fn routes() -> Router<Arc<SharedState>> {
     Router::new().route("/", get(get_schedule))
 }
-
