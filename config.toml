@@ -1,2 +1,12 @@
+[main]
 port = 10000
 schedule = "schedule.csv"
+
+[database]
+host = "localhost"
+port = 9042
+ssl_cert = "rootCa.crt"
+keyspace = "schedule"
+user = "schedule"
+password = "password"
+
