@@ -62,15 +62,22 @@ pub async fn post_import(
     };
 
     let mut reader = csv::Reader::from_reader(&*file);
-    let pse: Vec<PortableScheduleEntry> =
-        match reader.deserialize().collect::<Result<Vec<_>, _>>() {
-            Ok(result) => result,
-            Err(error) => return Err(error.to_string().into()),
-        };
+    let pse: Vec<PortableScheduleEntry> = match reader.deserialize().collect::<Result<Vec<_>, _>>()
+    {
+        Ok(result) => result,
+        Err(error) => return Err(error.to_string().into()),
+    };
 
     let schedule: Vec<dogfood::ScheduleRow> = pse.into_iter().map(|v| v.into()).collect();
 
-    let mut rows = match state.session.query("SELECT id FROM groups_name_id_composite WHERE name = ?", (&group,)).await {
+    let mut rows = match state
+        .session
+        .query(
+            "SELECT id FROM groups_name_id_composite WHERE name = ?",
+            (&group,),
+        )
+        .await
+    {
         Ok(result) => match result.rows_typed::<(Uuid,)>() {
             Ok(result) => result,
             Err(error) => return Err(error.to_string().into()),
@@ -79,7 +86,14 @@ pub async fn post_import(
     };
     let uuid = rows.next().unwrap().unwrap().0;
 
-    if let Err(error) = state.session.query("UPDATE groups SET schedule = ? WHERE id = ?", (schedule, uuid)).await {
+    if let Err(error) = state
+        .session
+        .query(
+            "UPDATE groups SET schedule = ? WHERE id = ?",
+            (schedule, uuid),
+        )
+        .await
+    {
         return Err(error.to_string().into());
     };
 
