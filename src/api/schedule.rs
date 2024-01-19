@@ -1,21 +1,67 @@
 use std::sync::Arc;
 
+use axum::extract::Multipart;
 use axum::extract::Query;
 use axum::extract::State;
+use axum::response::Result;
 use axum::routing::get;
+use axum::routing::post;
 use axum::Json;
 use axum::Router;
+use scylla::serialize::row::SerializeRow;
+use scylla::FromRow;
+use scylla::Session;
+use uuid::Uuid;
 
+use crate::models::Group;
 use crate::models::PortableScheduleEntry;
+use crate::models::Schedule;
 use crate::models::ScheduleEntry;
 use crate::models::ScheduleRequest;
 use crate::models::SharedState;
+use crate::models::User;
+
+// TODO: I want to kill myself
+async fn query_boilerplate<T, R: FromRow>(
+    session: &Session,
+    query: &'static str,
+    data: &[T],
+    error: &'static str,
+) -> Result<R, String>
+where
+    for<'a> &'a [T]: SerializeRow,
+{
+    let result = if let Ok(result) = session.query(query, data).await {
+        result
+    } else {
+        return Err(error.into());
+    };
+
+    let rows = if let Some(rows) = result.rows {
+        rows
+    } else {
+        return Err(error.into());
+    };
+
+    let row = if let Some(row) = rows.into_iter().next() {
+        row
+    } else {
+        return Err(error.into());
+    };
+
+    if let Ok(value) = row.into_typed::<R>() {
+        Ok(value)
+    } else {
+        return Err(error.into());
+    }
+}
 
 #[utoipa::path(
     get,
     path = "/schedule",
     params(
         ("week", Query, description = "Week number"),
+        ("group_id", Query, description = "Group ID"),
     ),
     responses(
         (status = 200, description = "Returns the schedule for the specified week", body = Vec<Vec<ScheduleEntry>>),
@@ -25,9 +71,30 @@ use crate::models::SharedState;
 pub async fn get_schedule(
     State(state): State<Arc<SharedState>>,
     request: Query<ScheduleRequest>,
-) -> Json<Vec<Vec<ScheduleEntry>>> {
-    let matching = state
-        .data
+) -> axum::response::Result<Json<Vec<Vec<ScheduleEntry>>>> {
+    let group_id = if let Ok(group_id) = Uuid::parse_str(&request.group_id.clone()) {
+        group_id
+    } else {
+        return Err("Group doesnt exist".into());
+    };
+
+    let group: Group = {
+        let result = query_boilerplate(
+            &state.session,
+            "SELECT * FROM groups WHERE id = ?",
+            &[group_id],
+            "Group doesnt exist",
+        )
+        .await;
+        if let Err(result) = result {
+            return Err(result.into());
+        } else {
+            result.unwrap()
+        }
+    };
+
+    let matching = group
+        .schedule
         .iter()
         .filter(|e| {
             let even = e.even.unwrap_or(false);
@@ -38,7 +105,7 @@ pub async fn get_schedule(
             }
             request.week >= e.week_range.start && request.week <= e.week_range.end && even_odd_check
         })
-        .collect::<Vec<&PortableScheduleEntry>>();
+        .collect::<Vec<&Schedule>>();
 
     let mut days: Vec<Vec<ScheduleEntry>> = vec![];
     for i in 1..8 {
@@ -47,7 +114,7 @@ pub async fn get_schedule(
         let mut lessons = matching
             .iter()
             .filter(|e| e.day == i)
-            .collect::<Vec<&&PortableScheduleEntry>>();
+            .collect::<Vec<&&Schedule>>();
 
         lessons.sort_by_key(|e| e.num);
 
@@ -79,9 +146,94 @@ pub async fn get_schedule(
         days.push(final_lessons);
     }
 
-    Json(days)
+    Ok(Json(days))
+}
+
+pub async fn post_import(
+    State(state): State<Arc<SharedState>>,
+    mut multipart: Multipart,
+) -> Result<&'static str> {
+    let mut file_data: Option<Vec<u8>> = None;
+    let mut group_id_data: Option<String> = None;
+    let mut access_token_data: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await? {
+        let name = field.name();
+        if name == Some("file") {
+            file_data = Some(field.bytes().await?.to_vec());
+        } else if name == Some("group_id") {
+            group_id_data = Some(field.text().await?);
+        } else if name == Some("access_token") {
+            access_token_data = Some(field.text().await?);
+        }
+    }
+
+    let file = if let Some(file) = file_data {
+        file
+    } else {
+        return Err("Multipart field \"file\" not found".into());
+    };
+
+    let group_id = if let Some(group) = group_id_data {
+        if let Ok(group_id) = Uuid::parse_str(&group) {
+            group_id
+        } else {
+            return Err("Invalid UUID".into());
+        }
+    } else {
+        return Err("Multipart field \"group_id\" not found".into());
+    };
+
+    let access_token = if let Some(access_token) = access_token_data {
+        access_token
+    } else {
+        return Err("Multipart field \"access_token\" not found".into());
+    };
+
+    let user: User = {
+        let result = query_boilerplate(
+            &state.session,
+            "SELECT * FROM users WHERE access_token = ?",
+            &[access_token],
+            "Access token is not valid",
+        )
+        .await;
+        if let Err(result) = result {
+            return Err(result.into());
+        } else {
+            result.unwrap()
+        }
+    };
+
+    if !user.group_scope.contains(&group_id) {
+        return Err("This group does not belong to your group scope".into());
+    }
+
+    let mut reader = csv::Reader::from_reader(&*file);
+    let pse: Vec<PortableScheduleEntry> = match reader.deserialize().collect::<Result<Vec<_>, _>>()
+    {
+        Ok(result) => result,
+        Err(error) => return Err(error.to_string().into()),
+    };
+
+    let schedule: Vec<Schedule> = pse.into_iter().map(|v| v.into()).collect();
+
+    if let Err(error) = state
+        .session
+        .query(
+            "UPDATE groups SET schedule = ? WHERE id = ?",
+            (schedule, group_id),
+        )
+        .await
+    {
+        return Err(error.to_string().into());
+    };
+
+    Ok("Import successful")
 }
 
 pub fn routes() -> Router<Arc<SharedState>> {
-    Router::new().route("/", get(get_schedule))
+    Router::new()
+        .route("/", get(get_schedule))
+        .route("/import", post(post_import))
 }

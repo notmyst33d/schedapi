@@ -1,13 +1,15 @@
+use scylla::FromUserType;
 use scylla::SerializeCql;
+use serde::Serialize;
 
-#[derive(SerializeCql, Debug)]
+#[derive(Serialize, SerializeCql, FromUserType, Debug)]
 pub struct Range {
     pub start: i32,
     pub end: i32,
 }
 
-#[derive(SerializeCql, Debug)]
-pub struct ScheduleRow {
+#[derive(Serialize, SerializeCql, FromUserType, Debug)]
+pub struct Schedule {
     pub day: i32,
     pub num: i32,
     pub week_range: Range,

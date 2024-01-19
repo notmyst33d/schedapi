@@ -1,12 +1,21 @@
 pub mod config;
-pub mod dogfood;
+pub mod group;
+pub mod group_create_request;
 pub mod portable_schedule_entry;
+pub mod schedule;
 pub mod schedule_entry;
 pub mod schedule_request;
 pub mod shared_state;
+pub mod user;
+pub mod user_create_response;
 
 pub use config::Config;
+pub use group::Group;
+pub use group_create_request::GroupCreateRequest;
 pub use portable_schedule_entry::PortableScheduleEntry;
+pub use schedule::Schedule;
 pub use schedule_entry::ScheduleEntry;
 pub use schedule_request::ScheduleRequest;
 pub use shared_state::SharedState;
+pub use user::User;
+pub use user_create_response::UserCreateResponse;

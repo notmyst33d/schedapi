@@ -1170,9 +1170,9 @@ name = "schedapi"
 version = "0.1.0"
 dependencies = [
  "axum",
- "bytes",
  "csv",
  "openssl",
+ "rand",
  "scylla",
  "serde",
  "serde_json",

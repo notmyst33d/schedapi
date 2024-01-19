@@ -1,6 +1,6 @@
-USE schedule_dogfood;
-
 DROP TABLE IF EXISTS groups;
+DROP TABLE IF EXISTS groups_name_id_composite;
+DROP TABLE IF EXISTS users;
 DROP TYPE IF EXISTS schedule;
 DROP TYPE IF EXISTS range;
 
@@ -32,4 +32,10 @@ CREATE TABLE groups_name_id_composite (
     name text,
     id uuid,
     PRIMARY KEY (name, id),
+);
+
+CREATE TABLE users (
+    access_token text,
+    group_scope list<uuid>,
+    PRIMARY KEY (access_token),
 );

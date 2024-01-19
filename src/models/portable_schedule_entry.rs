@@ -4,8 +4,8 @@ use serde::de;
 use serde::Deserialize;
 use serde::Deserializer;
 
-use crate::models::dogfood::schedule_row::Range as ScheduleRowRange;
-use crate::models::dogfood::ScheduleRow;
+use crate::models::schedule::Range as ScheduleRange;
+use crate::models::Schedule;
 
 #[derive(Deserialize, Debug)]
 pub struct PortableScheduleEntry {
@@ -22,12 +22,12 @@ pub struct PortableScheduleEntry {
     pub empty: Option<bool>,
 }
 
-impl Into<ScheduleRow> for PortableScheduleEntry {
-    fn into(self) -> ScheduleRow {
-        ScheduleRow {
+impl Into<Schedule> for PortableScheduleEntry {
+    fn into(self) -> Schedule {
+        Schedule {
             day: self.day as i32,
             num: self.num as i32,
-            week_range: ScheduleRowRange {
+            week_range: ScheduleRange {
                 start: self.week_range.start as i32,
                 end: self.week_range.end as i32,
             },
