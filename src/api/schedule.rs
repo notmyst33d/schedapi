@@ -21,39 +21,33 @@ use crate::models::ScheduleRequest;
 use crate::models::SharedState;
 use crate::models::User;
 
-// TODO: I want to kill myself
-async fn query_boilerplate<T, R: FromRow>(
-    session: &Session,
-    query: &'static str,
-    data: &[T],
-    error: &'static str,
-) -> Result<R, String>
-where
-    for<'a> &'a [T]: SerializeRow,
-{
-    let result = if let Ok(result) = session.query(query, data).await {
-        result
-    } else {
-        return Err(error.into());
-    };
+// FIXED: I no longer want to kill myself
+macro_rules! query {
+    ($s:expr, $q:literal, $d:expr, $e:literal) => {{
+        let result = if let Ok(result) = $s.query($q, $d).await {
+            result
+        } else {
+            return Err($e.into());
+        };
 
-    let rows = if let Some(rows) = result.rows {
-        rows
-    } else {
-        return Err(error.into());
-    };
+        let rows = if let Some(rows) = result.rows {
+            rows
+        } else {
+            return Err($e.into());
+        };
 
-    let row = if let Some(row) = rows.into_iter().next() {
-        row
-    } else {
-        return Err(error.into());
-    };
+        let row = if let Some(row) = rows.into_iter().next() {
+            row
+        } else {
+            return Err($e.into());
+        };
 
-    if let Ok(value) = row.into_typed::<R>() {
-        Ok(value)
-    } else {
-        return Err(error.into());
-    }
+        if let Ok(value) = row.into_typed() {
+            value
+        } else {
+            return Err($e.into());
+        }
+    }};
 }
 
 #[utoipa::path(
@@ -78,20 +72,12 @@ pub async fn get_schedule(
         return Err("Group doesnt exist".into());
     };
 
-    let group: Group = {
-        let result = query_boilerplate(
-            &state.session,
-            "SELECT * FROM groups WHERE id = ?",
-            &[group_id],
-            "Group doesnt exist",
-        )
-        .await;
-        if let Err(result) = result {
-            return Err(result.into());
-        } else {
-            result.unwrap()
-        }
-    };
+    let group: Group = query!(
+        state.session,
+        "SELECT * FROM groups WHERE id = ?",
+        (group_id,),
+        "Group doesnt exist"
+    );
 
     let matching = group
         .schedule
@@ -190,20 +176,12 @@ pub async fn post_import(
         return Err("Multipart field \"access_token\" not found".into());
     };
 
-    let user: User = {
-        let result = query_boilerplate(
-            &state.session,
-            "SELECT * FROM users WHERE access_token = ?",
-            &[access_token],
-            "Access token is not valid",
-        )
-        .await;
-        if let Err(result) = result {
-            return Err(result.into());
-        } else {
-            result.unwrap()
-        }
-    };
+    let user: User = query!(
+        state.session,
+        "SELECT * FROM users WHERE access_token = ?",
+        (access_token,),
+        "Access token is not valid"
+    );
 
     if !user.group_scope.contains(&group_id) {
         return Err("This group does not belong to your group scope".into());
