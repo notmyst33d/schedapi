@@ -1,6 +1,6 @@
 DROP TABLE IF EXISTS groups;
-DROP TABLE IF EXISTS groups_name_id_composite;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS users_access_token_username_composite;
 DROP TYPE IF EXISTS schedule;
 DROP TYPE IF EXISTS range;
 
@@ -28,14 +28,16 @@ CREATE TABLE groups (
     PRIMARY KEY (id),
 );
 
-CREATE TABLE groups_name_id_composite (
-    name text,
-    id uuid,
-    PRIMARY KEY (name, id),
+CREATE TABLE users (
+    username text,
+    access_token uuid,
+    group_scope list<uuid>,
+    password text,
+    PRIMARY KEY (username),
 );
 
-CREATE TABLE users (
-    access_token text,
-    group_scope list<uuid>,
+CREATE TABLE users_access_token_username_composite (
+    access_token uuid,
+    username text,
     PRIMARY KEY (access_token),
 );

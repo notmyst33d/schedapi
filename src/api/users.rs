@@ -1,52 +1,118 @@
 use std::sync::Arc;
 
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+};
 use axum::extract::State;
-use axum::routing::get;
-use axum::Json;
-use axum::Router;
-use rand::Rng;
+use axum::routing::post;
+use axum::{Json, Router};
 
-use crate::data::SharedState;
-use crate::data::User;
-use crate::data::UserCreateResponse;
+use crate::db::create_user;
+use crate::{
+    data::{
+        SharedState, User, UserChangePasswordRequest, UserComposite, UserTokenRequest,
+        UserTokenResponse,
+    },
+    query,
+};
+use crate::{query_one, query_one_checked};
 
-const ACCESS_TOKEN_CHARACTERS: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
-const ACCESS_TOKEN_LENGTH: usize = 16;
-
-async fn get_create(
+async fn post_create(
     State(state): State<Arc<SharedState>>,
-) -> axum::response::Result<Json<UserCreateResponse>> {
-    let access_token: String = {
-        let mut rng = rand::thread_rng();
-        (0..ACCESS_TOKEN_LENGTH)
-            .map(|_| {
-                let idx = rng.gen_range(0..ACCESS_TOKEN_CHARACTERS.len());
-                ACCESS_TOKEN_CHARACTERS[idx] as char
-            })
-            .collect()
+    Json(request): Json<UserTokenRequest>,
+) -> axum::response::Result<Json<UserTokenResponse>> {
+    if state.single_user {
+        return Err("Cannot create new users on single user instance".into());
     };
 
-    let user = User {
-        access_token: access_token.clone(),
-        group_scope: vec![],
+    let result: Result<User, _> = query_one_checked!(
+        state.session,
+        &state.queries.get_group,
+        (&request.username,)
+    );
+    if let Ok(user) = result {
+        if user.username == request.username {
+            return Err("User with this username already exists".into());
+        };
     };
 
-    if let Err(error) = state
-        .session
-        .query(
-            "INSERT INTO users (access_token, group_scope) VALUES (?, ?)",
-            user,
-        )
-        .await
+    let user = if let Ok(user) = create_user(
+        &state.session,
+        &state.queries,
+        request.username,
+        request.password,
+    )
+    .await
     {
-        return Err(error.to_string().into());
-    }
+        user
+    } else {
+        return Err("Cannot create a new user".into());
+    };
 
-    Ok(Json(UserCreateResponse {
-        access_token: access_token.clone(),
+    Ok(Json(UserTokenResponse {
+        access_token: user.access_token.to_string(),
     }))
 }
 
+async fn post_login(
+    State(state): State<Arc<SharedState>>,
+    Json(request): Json<UserTokenRequest>,
+) -> axum::response::Result<Json<UserTokenResponse>> {
+    let user: User = query_one!(
+        &state.session,
+        &state.queries.get_user,
+        (request.username,),
+        "User doesnt exist"
+    );
+
+    let hash = if let Ok(hash) = PasswordHash::new(&user.password) {
+        hash
+    } else {
+        return Err("Password hash is invalid".into());
+    };
+
+    if let Err(_) = Argon2::default().verify_password(request.password.as_bytes(), &hash) {
+        return Err("Invalid password".into());
+    };
+
+    Ok(Json(UserTokenResponse {
+        access_token: user.access_token.to_string(),
+    }))
+}
+
+async fn post_change_password(
+    State(state): State<Arc<SharedState>>,
+    Json(request): Json<UserChangePasswordRequest>,
+) -> axum::response::Result<&'static str> {
+    let user_composite: UserComposite = query_one!(
+        &state.session,
+        &state.queries.get_user_composite,
+        (request.access_token,),
+        "Access token is invalid"
+    );
+
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let hashed = if let Ok(result) = argon2.hash_password(request.password.as_bytes(), &salt) {
+        result.to_string()
+    } else {
+        return Err("Could not hash the password".into());
+    };
+
+    query!(
+        &state.session,
+        &state.queries.update_user_password,
+        (hashed, user_composite.username),
+        "Could not update the password"
+    );
+
+    Ok("Password changed successfully")
+}
+
 pub fn routes() -> Router<Arc<SharedState>> {
-    Router::new().route("/create", get(get_create))
+    Router::new()
+        .route("/create", post(post_create))
+        .route("/login", post(post_login))
+        .route("/change_password", post(post_change_password))
 }

@@ -5,6 +5,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct ConfigMain {
     pub port: u16,
+    pub single_user: bool,
 }
 
 #[derive(Deserialize)]

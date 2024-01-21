@@ -11,7 +11,7 @@ pub struct Group {
     #[serde(serialize_with = "serialize_uuid")]
     pub id: Uuid,
     pub name: String,
-    pub schedule: Vec<Schedule>,
+    pub schedule: Option<Vec<Schedule>>,
 }
 
 pub fn serialize_uuid<S>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error>

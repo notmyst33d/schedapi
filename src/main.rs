@@ -1,5 +1,7 @@
 mod api;
 mod data;
+mod db;
+mod serialization;
 
 use std::env;
 use std::error::Error;
@@ -14,8 +16,8 @@ use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::data::Config;
-use crate::data::SharedState;
+use crate::data::{Config, Queries, SharedState, User};
+use crate::db::create_user;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + 'static>> {
@@ -43,7 +45,21 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         .use_keyspace(config.database.keyspace, false)
         .await?;
 
-    let state = Arc::new(SharedState { session });
+    let queries = Queries::new(&session).await?;
+
+    if config.main.single_user {
+        let result: Result<User, _> = query_one_checked!(session, &queries.get_user, ("admin",));
+        if let Err(_) = result {
+            println!("Creating admin user for single user mode");
+            create_user(&session, &queries, "admin".to_string(), "admin".to_string()).await?;
+        };
+    };
+
+    let state = Arc::new(SharedState {
+        session,
+        queries,
+        single_user: config.main.single_user,
+    });
     let state_router: Router<Arc<SharedState>> = Router::new()
         .nest("/schedule", api::schedule::routes())
         .nest("/users", api::users::routes())

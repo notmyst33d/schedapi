@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 #[derive(SerializeRow, FromRow)]
 pub struct User {
-    pub access_token: String,
-    pub group_scope: Vec<Uuid>,
+    pub username: String,
+    pub access_token: Uuid,
+    pub group_scope: Option<Vec<Uuid>>,
+    pub password: String,
 }

@@ -10,42 +10,11 @@ use axum::Json;
 use axum::Router;
 use uuid::Uuid;
 
-use crate::data::Group;
-use crate::data::PortableScheduleEntry;
-use crate::data::Schedule;
-use crate::data::ScheduleEntry;
-use crate::data::ScheduleRequest;
-use crate::data::SharedState;
-use crate::data::User;
-
-// FIXED: I no longer want to kill myself
-macro_rules! query {
-    ($s:expr, $q:literal, $d:expr, $e:literal) => {{
-        let result = if let Ok(result) = $s.query($q, $d).await {
-            result
-        } else {
-            return Err($e.into());
-        };
-
-        let rows = if let Some(rows) = result.rows {
-            rows
-        } else {
-            return Err($e.into());
-        };
-
-        let row = if let Some(row) = rows.into_iter().next() {
-            row
-        } else {
-            return Err($e.into());
-        };
-
-        if let Ok(value) = row.into_typed() {
-            value
-        } else {
-            return Err($e.into());
-        }
-    }};
-}
+use crate::data::{
+    Group, PortableScheduleEntry, Schedule, ScheduleEntry, ScheduleRequest, SharedState, User,
+    UserComposite,
+};
+use crate::query_one;
 
 #[utoipa::path(
     get,
@@ -63,21 +32,20 @@ pub async fn get_schedule(
     State(state): State<Arc<SharedState>>,
     request: Query<ScheduleRequest>,
 ) -> axum::response::Result<Json<Vec<Vec<ScheduleEntry>>>> {
-    let group_id = if let Ok(group_id) = Uuid::parse_str(&request.group_id.clone()) {
-        group_id
-    } else {
-        return Err("Group doesnt exist".into());
-    };
-
-    let group: Group = query!(
+    let group: Group = query_one!(
         state.session,
-        "SELECT * FROM groups WHERE id = ?",
-        (group_id,),
+        &state.queries.get_group,
+        (request.group_id,),
         "Group doesnt exist"
     );
 
-    let matching = group
-        .schedule
+    let schedule = if let Some(schedule) = group.schedule {
+        schedule
+    } else {
+        return Err("Schedule is empty".into());
+    };
+
+    let matching = schedule
         .iter()
         .filter(|e| {
             let even = e.even.unwrap_or(false);
@@ -168,20 +136,37 @@ pub async fn post_import(
     };
 
     let access_token = if let Some(access_token) = access_token_data {
-        access_token
+        if let Ok(value) = Uuid::parse_str(&access_token) {
+            value
+        } else {
+            return Err("Cannot parse UUID".into());
+        }
     } else {
         return Err("Multipart field \"access_token\" not found".into());
     };
 
-    let user: User = query!(
+    let user_composite: UserComposite = query_one!(
         state.session,
-        "SELECT * FROM users WHERE access_token = ?",
+        &state.queries.get_user_composite,
         (access_token,),
         "Access token is not valid"
     );
 
-    if !user.group_scope.contains(&group_id) {
-        return Err("This group does not belong to your group scope".into());
+    if !state.single_user {
+        let user: User = query_one!(
+            state.session,
+            &state.queries.get_user,
+            (user_composite.username,),
+            "User not found"
+        );
+
+        if let Some(group_scope) = user.group_scope {
+            if !group_scope.contains(&group_id) {
+                return Err("This group does not belong to your group scope".into());
+            }
+        } else {
+            return Err("This group does not belong to your group scope".into());
+        };
     }
 
     let mut reader = csv::Reader::from_reader(&*file);

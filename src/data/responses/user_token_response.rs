@@ -1,6 +1,6 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct UserCreateResponse {
+pub struct UserTokenResponse {
     pub access_token: String,
 }
