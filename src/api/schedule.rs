@@ -8,9 +8,6 @@ use axum::routing::get;
 use axum::routing::post;
 use axum::Json;
 use axum::Router;
-use scylla::serialize::row::SerializeRow;
-use scylla::FromRow;
-use scylla::Session;
 use uuid::Uuid;
 
 use crate::models::Group;
