@@ -4,8 +4,8 @@ use serde::de;
 use serde::Deserialize;
 use serde::Deserializer;
 
-use crate::models::schedule::Range as ScheduleRange;
-use crate::models::Schedule;
+use crate::data::schedule::Range as ScheduleRange;
+use crate::data::Schedule;
 
 #[derive(Deserialize, Debug)]
 pub struct PortableScheduleEntry {

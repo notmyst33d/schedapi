@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde::Serializer;
 use uuid::Uuid;
 
-use crate::models::Schedule;
+use crate::data::Schedule;
 
 #[derive(Serialize, SerializeRow, FromRow)]
 pub struct Group {

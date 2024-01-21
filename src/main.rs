@@ -1,5 +1,5 @@
 mod api;
-mod models;
+mod data;
 
 use std::env;
 use std::error::Error;
@@ -14,8 +14,8 @@ use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::models::Config;
-use crate::models::SharedState;
+use crate::data::Config;
+use crate::data::SharedState;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + 'static>> {

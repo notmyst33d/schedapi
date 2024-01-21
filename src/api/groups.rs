@@ -6,9 +6,9 @@ use axum::routing::post;
 use axum::Router;
 use uuid::Uuid;
 
-use crate::models::Group;
-use crate::models::GroupCreateRequest;
-use crate::models::SharedState;
+use crate::data::Group;
+use crate::data::GroupCreateRequest;
+use crate::data::SharedState;
 
 async fn post_create(
     State(state): State<Arc<SharedState>>,

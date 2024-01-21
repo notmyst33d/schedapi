@@ -6,9 +6,9 @@ use axum::Json;
 use axum::Router;
 use rand::Rng;
 
-use crate::models::SharedState;
-use crate::models::User;
-use crate::models::UserCreateResponse;
+use crate::data::SharedState;
+use crate::data::User;
+use crate::data::UserCreateResponse;
 
 const ACCESS_TOKEN_CHARACTERS: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
 const ACCESS_TOKEN_LENGTH: usize = 16;

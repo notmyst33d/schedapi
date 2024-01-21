@@ -10,13 +10,13 @@ use axum::Json;
 use axum::Router;
 use uuid::Uuid;
 
-use crate::models::Group;
-use crate::models::PortableScheduleEntry;
-use crate::models::Schedule;
-use crate::models::ScheduleEntry;
-use crate::models::ScheduleRequest;
-use crate::models::SharedState;
-use crate::models::User;
+use crate::data::Group;
+use crate::data::PortableScheduleEntry;
+use crate::data::Schedule;
+use crate::data::ScheduleEntry;
+use crate::data::ScheduleRequest;
+use crate::data::SharedState;
+use crate::data::User;
 
 // FIXED: I no longer want to kill myself
 macro_rules! query {
