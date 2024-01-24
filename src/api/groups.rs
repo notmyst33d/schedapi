@@ -46,13 +46,6 @@ async fn get_list(
     State(state): State<Arc<SharedState>>,
     Query(request): Query<GenericAccessTokenRequest>,
 ) -> axum::response::Result<Json<Vec<Group>>> {
-    let user_composite: UserComposite = query_one!(
-        &state.session,
-        &state.queries.get_user_composite,
-        (request.access_token,),
-        "Access token is invalid"
-    );
-
     let mut groups: Vec<Group> = vec![];
     if state.single_user {
         groups = query_all!(
@@ -62,6 +55,17 @@ async fn get_list(
             "Cannot get all groups"
         );
     } else {
+        if let None = request.access_token {
+            return Err("Invalid access token".into());
+        };
+        let user_composite: UserComposite = query_one!(
+            &state.session,
+            &state.queries.get_user_composite,
+            (request.access_token.unwrap(),),
+            "Invalid access token"
+        );
+
+        // TODO: Query groups by group_scope
         todo!();
     }
 

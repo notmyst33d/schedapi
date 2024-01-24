@@ -3,6 +3,9 @@ use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct GenericAccessTokenRequest {
-    #[serde(deserialize_with = "crate::serialization::deserialize_uuid")]
-    pub access_token: Uuid,
+    #[serde(
+        default,
+        deserialize_with = "crate::serialization::deserialize_uuid_option"
+    )]
+    pub access_token: Option<Uuid>,
 }
