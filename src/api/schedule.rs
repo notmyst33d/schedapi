@@ -11,8 +11,8 @@ use axum::Router;
 use uuid::Uuid;
 
 use crate::data::{
-    Group, PortableScheduleEntry, Schedule, ScheduleEntry, ScheduleRequest, SharedState, User,
-    UserComposite, EvenOddValue
+    EvenOddValue, Group, PortableScheduleEntry, Schedule, ScheduleEntry, ScheduleRequest,
+    SharedState, User, UserComposite,
 };
 use crate::query_one;
 

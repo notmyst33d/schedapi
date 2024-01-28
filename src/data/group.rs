@@ -10,6 +10,7 @@ use crate::data::Schedule;
 pub struct Group {
     #[serde(serialize_with = "serialize_uuid")]
     pub id: Uuid,
+    pub epoch: Option<i64>,
     pub name: String,
     pub schedule: Option<Vec<Schedule>>,
 }

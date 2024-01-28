@@ -2,7 +2,7 @@ use serde::de;
 use serde::Deserialize;
 use serde::Deserializer;
 
-use crate::data::{Schedule, Range, EvenOdd};
+use crate::data::{EvenOdd, Range, Schedule};
 
 #[derive(Deserialize, Debug)]
 pub struct PortableScheduleEntry {

@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
-use scylla::{SerializeCql, FromUserType};
+use scylla::{FromUserType, SerializeCql};
+use serde::{Deserialize, Serialize};
 
 pub enum Value {
     NONE = 0,
@@ -11,4 +11,3 @@ pub enum Value {
 pub struct EvenOdd {
     pub value: i32,
 }
-

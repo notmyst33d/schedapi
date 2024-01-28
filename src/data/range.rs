@@ -1,6 +1,6 @@
-use serde::Serialize;
-use scylla::SerializeCql;
 use scylla::FromUserType;
+use scylla::SerializeCql;
+use serde::Serialize;
 
 #[derive(Serialize, SerializeCql, FromUserType, Debug)]
 pub struct Range {

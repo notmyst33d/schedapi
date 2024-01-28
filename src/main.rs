@@ -1,6 +1,7 @@
 mod api;
 mod data;
 mod db;
+mod init;
 mod serialization;
 
 use std::env;
@@ -46,6 +47,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         .await?;
 
     let queries = Queries::new(&session).await?;
+    init::init(&session, &queries).await;
 
     if config.main.single_user {
         let result: Result<User, _> = query_one_checked!(session, &queries.get_user, ("admin",));
@@ -68,6 +70,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         .nest("/users", api::users::routes())
         .nest("/groups", api::groups::routes())
         .nest("/product", api::product::routes())
+        .nest("/epoch", api::epoch::routes())
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()))
         .layer(CorsLayer::permissive());
 

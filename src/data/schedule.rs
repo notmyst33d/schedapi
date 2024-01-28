@@ -2,8 +2,8 @@ use scylla::FromUserType;
 use scylla::SerializeCql;
 use serde::Serialize;
 
-use crate::data::Range;
 use crate::data::EvenOdd;
+use crate::data::Range;
 
 #[derive(Serialize, SerializeCql, FromUserType, Debug)]
 pub struct Schedule {

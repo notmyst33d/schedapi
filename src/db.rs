@@ -110,6 +110,17 @@ macro_rules! query_one_checked {
     }};
 }
 
+#[macro_export]
+macro_rules! query_checked {
+    ($s:expr, $q:expr, $d:expr) => {{
+        let result = $s
+            .execute($q, $d)
+            .await
+            .map_err(|e| format!("Query returned an error: {}", e.to_string()));
+        result
+    }};
+}
+
 pub async fn create_user(
     session: &Session,
     queries: &Queries,

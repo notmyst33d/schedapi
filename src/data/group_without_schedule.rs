@@ -8,6 +8,7 @@ use uuid::Uuid;
 pub struct GroupWithoutSchedule {
     #[serde(serialize_with = "serialize_uuid")]
     pub id: Uuid,
+    pub epoch: i64,
     pub name: String,
 }
 
