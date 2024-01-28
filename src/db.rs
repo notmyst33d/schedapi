@@ -26,42 +26,35 @@ macro_rules! query {
 #[macro_export]
 macro_rules! query_one {
     ($s:expr, $q:expr, $d:expr, $e:literal) => {{
-        let result = $s.execute($q, $d).await;
-        let result = if let Err(error) = result {
-            #[cfg(debug_assertions)]
-            println!("Query returned an error: {}", error.to_string());
-            return Err($e.into());
-        } else {
-            result.unwrap()
+        let result = match $s.execute($q, $d).await {
+            Ok(result) => result,
+            Err(error) => {
+                #[cfg(debug_assertions)]
+                println!("Query returned an error: {}", error.to_string());
+                return Err($e.into());
+            }
         };
 
-        let rows = if let None = result.rows {
+        println!("{:#?}", result.raw_rows);
+        let mut rows = result.rows.unwrap();
+        let row = if rows.len() > 0 {
+            rows.swap_remove(0)
+        } else {
             #[cfg(debug_assertions)]
             println!("Query returned no rows");
             return Err($e.into());
-        } else {
-            result.rows.unwrap()
         };
 
-        let row = rows.into_iter().next();
-        let row = if let None = row {
-            #[cfg(debug_assertions)]
-            println!("Query returned no rows");
-            return Err($e.into());
-        } else {
-            row.unwrap()
-        };
-
-        let value = row.into_typed();
-        if let Err(error) = value {
-            #[cfg(debug_assertions)]
-            println!(
-                "Query deserialization returned an error: {}",
-                error.to_string()
-            );
-            return Err($e.into());
-        } else {
-            value.unwrap()
+        match row.into_typed() {
+            Ok(result) => result,
+            Err(error) => {
+                #[cfg(debug_assertions)]
+                println!(
+                    "Query deserialization returned an error: {}",
+                    error.to_string()
+                );
+                return Err($e.into());
+            }
         }
     }};
 }
