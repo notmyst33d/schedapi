@@ -6,7 +6,7 @@ use axum::Router;
 use uuid::Uuid;
 
 use crate::data::{
-    GenericAccessTokenRequest, Group, GroupCreateRequest, SharedState, UserComposite,
+    GenericAccessTokenRequest, Group, GroupWithoutSchedule, GroupCreateRequest, SharedState, UserComposite,
 };
 use crate::{query, query_all, query_one};
 
@@ -45,12 +45,12 @@ async fn post_create(
 async fn get_list(
     State(state): State<Arc<SharedState>>,
     Query(request): Query<GenericAccessTokenRequest>,
-) -> axum::response::Result<Json<Vec<Group>>> {
-    let mut groups: Vec<Group> = vec![];
+) -> axum::response::Result<Json<Vec<GroupWithoutSchedule>>> {
+    let groups: Vec<GroupWithoutSchedule>;
     if state.single_user {
         groups = query_all!(
             &state.session,
-            &state.queries.get_all_groups,
+            &state.queries.get_all_groups_without_schedule,
             (),
             "Cannot get all groups"
         );
@@ -58,7 +58,7 @@ async fn get_list(
         if let None = request.access_token {
             return Err("Invalid access token".into());
         };
-        let user_composite: UserComposite = query_one!(
+        let _user_composite: UserComposite = query_one!(
             &state.session,
             &state.queries.get_user_composite,
             (request.access_token.unwrap(),),

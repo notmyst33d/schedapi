@@ -9,6 +9,12 @@ pub struct ConfigMain {
 }
 
 #[derive(Deserialize)]
+pub struct ConfigProduct {
+    pub name: String,
+    pub logo: String,
+}
+
+#[derive(Deserialize)]
 pub struct ConfigDatabase {
     pub host: String,
     pub port: u16,
@@ -21,5 +27,6 @@ pub struct ConfigDatabase {
 #[derive(Deserialize)]
 pub struct Config {
     pub main: ConfigMain,
+    pub product: ConfigProduct,
     pub database: ConfigDatabase,
 }

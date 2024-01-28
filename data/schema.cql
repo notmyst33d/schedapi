@@ -3,22 +3,26 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS users_access_token_username_composite;
 DROP TYPE IF EXISTS schedule;
 DROP TYPE IF EXISTS range;
+DROP TYPE IF EXISTS enum_value;
 
 CREATE TYPE range (
     start int,
     end int,
 );
 
+CREATE TYPE enum_value (
+    value int,
+);
+
 CREATE TYPE schedule (
     day int,
     num int,
-    week_range frozen<range>,
+    week_ranges list<frozen<range>>,
     name text,
     lesson_type text,
     teacher text,
     auditorium text,
-    even boolean,
-    odd boolean,
+    even_odd frozen<enum_value>,
 );
 
 CREATE TABLE groups (

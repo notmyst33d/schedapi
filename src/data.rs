@@ -9,6 +9,9 @@ pub mod schedule_entry;
 pub mod shared_state;
 pub mod user;
 pub mod user_composite;
+pub mod group_without_schedule;
+pub mod even_odd;
+pub mod range;
 
 pub use config::Config;
 pub use group::Group;
@@ -21,3 +24,7 @@ pub use schedule_entry::ScheduleEntry;
 pub use shared_state::SharedState;
 pub use user::User;
 pub use user_composite::UserComposite;
+pub use group_without_schedule::GroupWithoutSchedule;
+pub use even_odd::EvenOdd;
+pub use even_odd::Value as EvenOddValue;
+pub use range::Range;

@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::data::{
     Group, PortableScheduleEntry, Schedule, ScheduleEntry, ScheduleRequest, SharedState, User,
-    UserComposite,
+    UserComposite, EvenOddValue
 };
 use crate::query_one;
 
@@ -48,13 +48,18 @@ pub async fn get_schedule(
     let matching = schedule
         .iter()
         .filter(|e| {
-            let even = e.even.unwrap_or(false);
-            let odd = e.odd.unwrap_or(false);
+            let even = e.even_odd.value == EvenOddValue::EVEN as i32;
+            let odd = e.even_odd.value == EvenOddValue::ODD as i32;
             let mut even_odd_check = true;
             if even || odd {
                 even_odd_check = (even && request.week % 2 == 0) || (odd && request.week % 2 != 0);
             }
-            request.week >= e.week_range.start && request.week <= e.week_range.end && even_odd_check
+            for range in &e.week_ranges {
+                if request.week >= range.start && request.week <= range.end && even_odd_check {
+                    return true;
+                }
+            }
+            false
         })
         .collect::<Vec<&Schedule>>();
 

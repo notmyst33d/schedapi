@@ -35,7 +35,6 @@ macro_rules! query_one {
             }
         };
 
-        println!("{:#?}", result.raw_rows);
         let mut rows = result.rows.unwrap();
         let row = if rows.len() > 0 {
             rows.swap_remove(0)

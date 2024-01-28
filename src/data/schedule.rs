@@ -2,21 +2,18 @@ use scylla::FromUserType;
 use scylla::SerializeCql;
 use serde::Serialize;
 
-#[derive(Serialize, SerializeCql, FromUserType, Debug)]
-pub struct Range {
-    pub start: i32,
-    pub end: i32,
-}
+use crate::data::Range;
+use crate::data::EvenOdd;
 
 #[derive(Serialize, SerializeCql, FromUserType, Debug)]
 pub struct Schedule {
     pub day: i32,
     pub num: i32,
-    pub week_range: Range,
+    pub week_ranges: Vec<Range>,
     pub name: String,
     pub lesson_type: Option<String>,
     pub teacher: Option<String>,
     pub auditorium: String,
-    pub even: Option<bool>,
-    pub odd: Option<bool>,
+    #[serde(deserialize_with = "crate::serialization::deserialize_even_odd")]
+    pub even_odd: EvenOdd,
 }

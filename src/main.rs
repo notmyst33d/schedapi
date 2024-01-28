@@ -55,15 +55,19 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         };
     };
 
+    let product_logo = fs::read(config.product.logo).await?;
     let state = Arc::new(SharedState {
         session,
         queries,
         single_user: config.main.single_user,
+        product_name: config.product.name.leak(),
+        product_logo: product_logo.leak(),
     });
     let state_router: Router<Arc<SharedState>> = Router::new()
         .nest("/schedule", api::schedule::routes())
         .nest("/users", api::users::routes())
         .nest("/groups", api::groups::routes())
+        .nest("/product", api::product::routes())
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()))
         .layer(CorsLayer::permissive());
 
