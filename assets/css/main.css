@@ -1,0 +1,125 @@
+html,
+body {
+    color: #1a1a1a;
+    background-color: #eaeaea;
+    font-family: 'Onest';
+    font-size: 14px;
+    margin: 0px;
+}
+
+@media (prefers-color-scheme: dark) {
+    html,
+    body {
+        color: #ffffff;
+        background-color: #131313;
+    }
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.center {
+    align-items: center;
+}
+
+.expand-w {
+    width: 100%;
+}
+
+.header {
+    height: fit-content;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.lesser-header {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.card-header {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.primary-button {
+    background-color: #d4323d;
+    color: #f9f3f5;
+    font-weight: 500;
+    border: none;
+    border-radius: 18px;
+    padding: 0px 16px;
+    height: 36px;
+    cursor: pointer;
+}
+
+.secondary-button {
+    color: #ffffff;
+    background-color: #2f2f2f;
+    font-weight: 500;
+    border: none;
+    border-radius: 18px;
+    padding: 0px 16px;
+    height: 36px;
+    cursor: pointer;
+}
+
+.card {
+    width: 100%;
+    max-width: 320px;
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .card {
+        background-color: #2f2f2f;
+    }
+}
+
+.product-logo {
+    width: 64px;
+    height: 64px;
+    margin-right: 16px;
+    border-radius: 16px;
+}
+
+.product-name {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+#group-select {
+    width: fit-content;
+    background-color: #d4323d;
+    color: #f9f3f5;
+    font-weight: 500;
+    border: none;
+    border-radius: 18px;
+    padding: 0px 16px;
+    height: 36px;
+}
+
+.week-input {
+    width: 96px;
+    height: 36px;
+    border-style: none;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 0px 16px;
+}
+
+.hidden {
+    display: none;
+}
