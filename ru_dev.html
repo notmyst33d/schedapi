@@ -43,6 +43,7 @@
         const url = new URL(window.location.href);
         const apiUrl = url.searchParams.get("api");
 
+        const epochCache = new Map();
         const main = document.getElementById("main");
         const groupSelect = document.getElementById("group-select");
         const weekInput = document.getElementsByClassName("week-input")[0];
@@ -160,8 +161,7 @@
 
         async function getCurrentWeek() {
             let date = new Date();
-            //let offset = date.getTimezoneOffset() * 60 * 1000;
-            let offset = 0;
+            let offset = date.getTimezoneOffset() * 60 * 1000;
             return Math.ceil(((date.valueOf() - await getEpoch() - offset) / 60 / 60 / 24 / 7) / 1000);
         }
 
@@ -213,8 +213,15 @@
         }
 
         async function getEpoch() {
-            let response = await (await fetch(`https://${apiUrl}/epoch?group_id=${groupSelect.value}`)).json();
-            return response.epoch;
+            let epoch = 0;
+            if (epochCache.get(groupSelect.value) !== undefined) {
+                epoch = epochCache.get(groupSelect.value);
+            } else {
+                let response = await (await fetch(`https://${apiUrl}/epoch?group_id=${groupSelect.value}`)).json();
+                epoch = response.epoch;
+                epochCache.set(groupSelect.value, epoch);
+            }
+            return epoch;
         }
 
         Array.prototype.equals = function (other) {
