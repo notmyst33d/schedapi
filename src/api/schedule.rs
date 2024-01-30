@@ -42,7 +42,7 @@ pub async fn get_schedule(
     let schedule = if let Some(schedule) = group.schedule {
         schedule
     } else {
-        return Err("Schedule is empty".into());
+        return Ok(Json(vec![vec![]]));
     };
 
     let matching = schedule
