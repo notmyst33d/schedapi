@@ -25,8 +25,14 @@ pub struct ConfigDatabase {
 }
 
 #[derive(Deserialize)]
+pub struct ConfigFun {
+    pub blaze: String,
+}
+
+#[derive(Deserialize)]
 pub struct Config {
     pub main: ConfigMain,
     pub product: ConfigProduct,
     pub database: ConfigDatabase,
+    pub fun: Option<ConfigFun>,
 }

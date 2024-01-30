@@ -57,6 +57,14 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         };
     };
 
+    let blaze = match config.fun {
+        Some(config_fun) => match fs::read(config_fun.blaze).await {
+            Ok(result) => result.leak(),
+            Err(_) => &mut [],
+        },
+        None => &mut [],
+    };
+
     let product_logo = fs::read(config.product.logo).await?;
     let state = Arc::new(SharedState {
         session,
@@ -64,6 +72,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         single_user: config.main.single_user,
         product_name: config.product.name.leak(),
         product_logo: product_logo.leak(),
+        blaze,
     });
     let state_router: Router<Arc<SharedState>> = Router::new()
         .nest("/schedule", api::schedule::routes())
@@ -71,6 +80,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         .nest("/groups", api::groups::routes())
         .nest("/product", api::product::routes())
         .nest("/epoch", api::epoch::routes())
+        .nest("/fun", api::fun::routes())
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()))
         .layer(CorsLayer::permissive());
 

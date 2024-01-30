@@ -8,4 +8,5 @@ pub struct SharedState {
     pub single_user: bool,
     pub product_name: &'static str,
     pub product_logo: &'static [u8],
+    pub blaze: &'static [u8],
 }
