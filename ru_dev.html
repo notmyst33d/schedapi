@@ -169,7 +169,7 @@
             infoContainer.innerText = "Получение данных...";
 
             let totalLength = 0;
-            const response = await fetch(`http://${apiUrl}/schedule?week=${week}&group_id=${groupSelect.value}`);
+            const response = await fetch(`https://${apiUrl}/schedule?week=${week}&group_id=${groupSelect.value}`);
             if (response.status !== 200) {
                 infoContainer.innerText = `API выдал ошибку при получении данных`;
                 scheduleContainer.innerHTML = "";
@@ -213,7 +213,7 @@
         }
 
         async function getEpoch() {
-            let response = await (await fetch(`http://${apiUrl}/epoch?group_id=${groupSelect.value}`)).json();
+            let response = await (await fetch(`https://${apiUrl}/epoch?group_id=${groupSelect.value}`)).json();
             return response.epoch;
         }
 
@@ -230,10 +230,10 @@
         };
 
         async function finalizeSetup() {
-            productName.innerText = await (await fetch(`http://${apiUrl}/product/name`)).text();
-            productLogo.src = `http://${apiUrl}/product/logo.jpg`;
+            productName.innerText = await (await fetch(`https://${apiUrl}/product/name`)).text();
+            productLogo.src = `https://${apiUrl}/product/logo.jpg`;
 
-            let groups = await (await fetch(`http://${apiUrl}/groups/list`)).json();
+            let groups = await (await fetch(`https://${apiUrl}/groups/list`)).json();
             for (const group of groups) {
                 let option = document.createElement("option");
                 option.value = group.id;
@@ -259,7 +259,7 @@
 
             weekInput.addEventListener("change", () => {
                 if (weekInput.value === "blaze") {
-                    important.src = `http://${apiUrl}/fun/blaze`;
+                    important.src = `https://${apiUrl}/fun/blaze`;
                     important.classList.remove("hidden");
                     main.classList.add("hidden");
                 }
@@ -277,7 +277,7 @@
                 importantArray.push(event.keyCode);
                 if (importantArray.equals(importantKeycodes)) {
                     importantArray = [];
-                    important.src = `http://${apiUrl}/fun/blaze`;
+                    important.src = `https://${apiUrl}/fun/blaze`;
                     important.classList.remove("hidden");
                     main.classList.add("hidden");
                 }
