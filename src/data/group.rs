@@ -12,7 +12,7 @@ pub struct Group {
     pub id: Uuid,
     pub epoch: Option<i64>,
     pub name: String,
-    pub schedule: Option<Vec<Schedule>>,
+    pub schedule2: Option<Vec<Schedule>>,
 }
 
 pub fn serialize_uuid<S>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error>

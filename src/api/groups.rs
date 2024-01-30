@@ -25,7 +25,7 @@ async fn post_create(
         id: Uuid::new_v4(),
         epoch: None,
         name: request.name.clone(),
-        schedule: None,
+        schedule2: None,
     };
 
     query!(

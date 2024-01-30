@@ -30,7 +30,7 @@ CREATE TABLE groups (
     id uuid,
     epoch bigint,
     name text,
-    schedule list<frozen<schedule>>,
+    schedule2 list<frozen<schedule>>,
     PRIMARY KEY (id),
 );
 

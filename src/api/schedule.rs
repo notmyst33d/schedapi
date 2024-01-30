@@ -39,7 +39,7 @@ pub async fn get_schedule(
         "Group doesnt exist"
     );
 
-    let schedule = if let Some(schedule) = group.schedule {
+    let schedule = if let Some(schedule) = group.schedule2 {
         schedule
     } else {
         return Ok(Json(vec![vec![]]));
@@ -186,7 +186,7 @@ pub async fn post_import(
     if let Err(error) = state
         .session
         .query(
-            "UPDATE groups SET schedule = ? WHERE id = ?",
+            "UPDATE groups SET schedule2 = ? WHERE id = ?",
             (schedule, group_id),
         )
         .await
