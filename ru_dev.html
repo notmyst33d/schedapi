@@ -33,7 +33,7 @@
             <button id="week-button-next" class="primary-button">Следующая неделя</button>
         </div>
         <div id="info-container" class="lesser-header" style="padding-bottom: 16px;">
-            Выберите группу в списке
+            Загрузка...
         </div>
         <div id="schedule-container">
         </div>
@@ -241,17 +241,39 @@
                 groupSelect.appendChild(option);
             }
 
+            groupSelect.addEventListener("change", async () => {
+                if (weekInput.value == "none") {
+                    infoContainer.innerText = "Выберите группу в списке";
+                    return;
+                }
+                const week = await getCurrentWeek();
+                weekInput.value = week;
+                updateForWeek(week);
+            });
+
             weekButtonCustom.addEventListener("click", () => {
+                if (weekInput.value == "none") {
+                    infoContainer.innerText = "Выберите группу в списке";
+                    return;
+                }
                 updateForWeek(weekInput.value);
             });
 
             weekButtonCurrent.addEventListener("click", async () => {
+                if (weekInput.value == "none") {
+                    infoContainer.innerText = "Выберите группу в списке";
+                    return;
+                }
                 const week = await getCurrentWeek();
                 weekInput.value = week;
                 updateForWeek(week);
             });
 
             weekButtonNext.addEventListener("click", async () => {
+                if (weekInput.value == "none") {
+                    infoContainer.innerText = "Выберите группу в списке";
+                    return;
+                }
                 const week = await getCurrentWeek();
                 weekInput.value = week + 1;
                 updateForWeek(week + 1);
@@ -282,6 +304,8 @@
                     main.classList.add("hidden");
                 }
             });
+
+            infoContainer.innerText = "Выберите группу в списке";
         }
 
         if (apiUrl === null) {
