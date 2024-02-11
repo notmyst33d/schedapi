@@ -6,7 +6,7 @@ use crate::{query_checked, query_one_checked};
 
 pub async fn init(session: &Session, queries: &Queries) {
     let internal_record: Result<Internal, _> =
-        query_one_checked!(session, &queries.get_internal, ());
+        query_one_checked!(session, &queries.get_internal, (uuid!("00000000-0000-0000-0000-000000000000"),));
 
     if let Ok(_) = internal_record {
         return;
