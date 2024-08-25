@@ -52,7 +52,7 @@ body {
 }
 
 .primary-button {
-    background-color: #d4323d;
+    background-color: #8332d4;
     color: #f9f3f5;
     font-weight: 500;
     border: none;
@@ -101,7 +101,7 @@ body {
 
 #group-select {
     width: fit-content;
-    background-color: #d4323d;
+    background-color: #8332d4;
     color: #f9f3f5;
     font-weight: 500;
     border: none;

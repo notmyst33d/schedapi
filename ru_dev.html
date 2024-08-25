@@ -38,7 +38,6 @@
         <div id="schedule-container">
         </div>
     </div>
-    <img id="important" class="hidden" style="width: 100vw; height: 100vh; object-fit: contain; margin-bottom: -4px;">
     <script>
         const url = new URL(window.location.href);
         const apiUrl = url.searchParams.get("api");
@@ -104,9 +103,6 @@
             `;
         }
 
-        let importantArray = [];
-        const importantKeycodes = [66, 76, 65, 90, 69];
-        const importantElement = document.getElementById("important");
         function renderScheduleLesson(lesson, index) {
             let lessonType = "";
             let auditorium = "";
@@ -224,18 +220,6 @@
             return epoch;
         }
 
-        Array.prototype.equals = function (other) {
-            if (this.length !== other.length) {
-                return false;
-            }
-            for (let i = 0; i < other.length; i++) {
-                if (other[i] !== this[i]) {
-                    return false;
-                }
-            }
-            return true;
-        };
-
         async function finalizeSetup() {
             productName.innerText = await (await fetch(`https://${apiUrl}/product/name`)).text();
             productLogo.src = `https://${apiUrl}/product/logo.jpg`;
@@ -284,32 +268,6 @@
                 const week = await getCurrentWeek();
                 weekInput.value = week + 1;
                 updateForWeek(week + 1);
-            });
-
-            weekInput.addEventListener("change", () => {
-                if (weekInput.value === "blaze") {
-                    important.src = `https://${apiUrl}/fun/blaze`;
-                    important.classList.remove("hidden");
-                    main.classList.add("hidden");
-                }
-            });
-
-            productLogo.addEventListener("click", () => {
-                weekInput.type = "text";
-            });
-
-            document.addEventListener("keydown", (event) => {
-                if (!importantKeycodes.includes(event.keyCode)) {
-                    importantArray = [];
-                    return;
-                }
-                importantArray.push(event.keyCode);
-                if (importantArray.equals(importantKeycodes)) {
-                    importantArray = [];
-                    important.src = `https://${apiUrl}/fun/blaze`;
-                    important.classList.remove("hidden");
-                    main.classList.add("hidden");
-                }
             });
 
             infoContainer.innerText = "Выберите группу в списке";
