@@ -58,7 +58,6 @@
         var base = window.location.href.substring(start + 4, end);
         var apiUrl = 'https://' + base;
         if (window.fetch == undefined) {
-            console.log('Falling back to HTTP');
             apiUrl = 'http://' + base;
         }
 
