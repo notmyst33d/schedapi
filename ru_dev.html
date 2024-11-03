@@ -40,7 +40,7 @@
             end = window.location.href.length;
         }
         var base = window.location.href.substring(start + 4, end);
-        var apiUrl = 'http://' + base;
+        var apiUrl = 'https://' + base;
         if (window.fetch == undefined) {
             apiUrl = 'http://' + base;
         }
