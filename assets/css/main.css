@@ -1,10 +1,14 @@
-html,
+html {
+    margin: 0px;
+}
+
 body {
     color: #1a1a1a;
     background-color: #eaeaea;
     font-family: 'Onest';
     font-size: 14px;
     margin: 0px;
+    padding: 16px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,17 +66,6 @@ body {
     cursor: pointer;
 }
 
-.secondary-button {
-    color: #ffffff;
-    background-color: #2f2f2f;
-    font-weight: 500;
-    border: none;
-    border-radius: 18px;
-    padding: 0px 16px;
-    height: 36px;
-    cursor: pointer;
-}
-
 .card {
     width: 100%;
     max-width: 320px;
@@ -87,14 +80,14 @@ body {
     }
 }
 
-.product-logo {
+#product-logo {
     width: 64px;
     height: 64px;
     margin-right: 16px;
     border-radius: 16px;
 }
 
-.product-name {
+#product-name {
     font-size: 24px;
     font-weight: 700;
 }
@@ -110,7 +103,7 @@ body {
     height: 36px;
 }
 
-.week-input {
+#week-input {
     width: 96px;
     height: 36px;
     border-style: none;
@@ -118,8 +111,4 @@ body {
     font-size: 16px;
     font-weight: 700;
     padding: 0px 16px;
-}
-
-.hidden {
-    display: none;
 }

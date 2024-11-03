@@ -14,62 +14,46 @@
 </head>
 
 <body>
-    <div style="padding: 16px;">
-        <div class="row" style="align-items: center; margin-bottom: 16px;">
-            <img class="product-logo">
-            <div class="product-name"></div>
-        </div>
-        <div class="row" style="padding-bottom: 16px; align-items: center;">
-            <span id="header" class="header" style="padding-right: 16px">Расписание</span>
-            <select id="group-select">
-                <option value="none">Группа</option>
-            </select>
-        </div>
-        <div class="row" style="padding-bottom: 16px; row-gap: 8px; align-items: center;">
-            <span class="week-text" style="padding-right: 8px;">Неделя:</span>
-            <input class="week-input" style="margin-right: 8px;" type="number" value="1" min="1" placeholder="Неделя" />
-            <button id="week-button-custom" class="primary-button" style="margin-right: 8px;">Получить</button>
-            <button id="week-button-current" class="primary-button" style="margin-right: 8px;">Текущая неделя</button>
-            <button id="week-button-next" class="primary-button">Следующая неделя</button>
-        </div>
-        <div id="info-container" class="lesser-header" style="padding-bottom: 16px;">
-            Загрузка...
-        </div>
-        <div id="schedule-container">
-        </div>
+    <div class="row" style="align-items: center; margin-bottom: 16px;">
+        <img id="product-logo">
+        <div id="product-name"></div>
     </div>
+    <div class="row" style="padding-bottom: 16px; align-items: center;">
+        <span id="header" class="header" style="padding-right: 16px">Расписание</span>
+        <select id="group-select">
+            <option value="none">Группа</option>
+        </select>
+    </div>
+    <div class="row" style="padding-bottom: 16px; row-gap: 8px; align-items: center;">
+        <span class="week-text" style="padding-right: 8px;">Неделя:</span>
+        <input id="week-input" style="margin-right: 8px;" type="number" value="1" min="1" placeholder="Неделя" />
+        <button id="week-button-custom" class="primary-button" style="margin-right: 8px;">Получить</button>
+        <button id="week-button-current" class="primary-button" style="margin-right: 8px;">Текущая неделя</button>
+        <button id="week-button-next" class="primary-button">Следующая неделя</button>
+    </div>
+    <div id="info-container" class="lesser-header" style="padding-bottom: 16px;">Загрузка...</div>
+    <div id="schedule-container"></div>
     <script>
-        var isMsie = window.navigator.userAgent.indexOf('MSIE') != -1;
-        document.getElementByTagNameAndClassName = function (tagName, className) {
-            var elements = document.getElementsByTagName(tagName);
-            for (var i = 0; i < elements.length; i++) {
-                if (elements[i].className.indexOf(className) != -1) {
-                    return elements[i];
-                }
-            }
-            return null;
-        }
-
         var start = window.location.href.indexOf('api=');
         var end = window.location.href.indexOf('&');
         if (end == -1) {
             end = window.location.href.length;
         }
         var base = window.location.href.substring(start + 4, end);
-        var apiUrl = 'https://' + base;
+        var apiUrl = 'http://' + base;
         if (window.fetch == undefined) {
             apiUrl = 'http://' + base;
         }
 
         var groupSelect = document.getElementById('group-select');
-        var weekInput = document.getElementByTagNameAndClassName('input', 'week-input');
+        var weekInput = document.getElementById('week-input');
         var weekButtonCustom = document.getElementById('week-button-custom');
         var weekButtonCurrent = document.getElementById('week-button-current');
         var weekButtonNext = document.getElementById('week-button-next');
         var infoContainer = document.getElementById('info-container');
         var scheduleContainer = document.getElementById('schedule-container');
-        var productName = document.getElementByTagNameAndClassName('div', 'product-name');
-        var productLogo = document.getElementByTagNameAndClassName('img', 'product-logo');
+        var productName = document.getElementById('product-name');
+        var productLogo = document.getElementById('product-logo');
 
         var oneDay = (60 * 60 * 24) * 1000;
         var oneWeek = oneDay * 7;
@@ -89,7 +73,7 @@
 
         function get(url, cb) {
             var xhr;
-            if (isMsie) {
+            if (window.ActiveXObject || "ActiveXObject" in window) {
                 xhr = new ActiveXObject("Msxml2.XMLHTTP");
             } else {
                 xhr = new XMLHttpRequest();
@@ -100,6 +84,11 @@
                     cb(xhr.responseText);
                 }
             };
+            if (xhr.onerror) {
+                xhr.onerror = function () {
+                    infoContainer.innerHTML = 'Ошибка получения данных';
+                };
+            }
             xhr.send();
         }
 
@@ -184,9 +173,14 @@
         function updateForWeek(week) {
             infoContainer.innerHTML = 'Получение данных...';
             getJSON(apiUrl + '/schedule?week=' + week + '&group_id=' + groupSelect.value, function (data) {
+                if (data.error) {
+                    infoContainer.innerHTML = 'Ошибка получения расписания';
+                    return;
+                }
+
                 var totalLength = 0;
-                for (var i = 0; i < data.length; i++) {
-                    totalLength += data[i].length;
+                for (var i = 0; i < data.ok.length; i++) {
+                    totalLength += data.ok[i].length;
                 }
 
                 if (totalLength == 0) {
@@ -197,7 +191,7 @@
 
                 var entries = [];
                 var rowsHtml = [];
-                for (var i = 0; i < data.length; i++) {
+                for (var i = 0; i < data.ok.length; i++) {
                     if (entries.length == 2) {
                         rowsHtml.push(renderScheduleRow(entries));
                         entries = [];
@@ -209,7 +203,7 @@
 
                     entries.push({
                         dayName: dayMapping[i],
-                        lessons: data[i]
+                        lessons: data.ok[i]
                     });
                 }
 
@@ -227,8 +221,12 @@
                 cb(epochCacheValue);
             } else {
                 getJSON(apiUrl + '/epoch?group_id=' + groupSelect.value, function (data) {
-                    epochCache[groupSelect.value] = data.epoch;
-                    cb(data.epoch);
+                    if (data.error) {
+                        infoContainer.innerHTML = 'Ошибка получения начала недель';
+                        return;
+                    }
+                    epochCache[groupSelect.value] = data.ok.epoch;
+                    cb(data.ok.epoch);
                 });
             }
         }
@@ -240,10 +238,14 @@
             productLogo.src = apiUrl + '/product/logo.jpg';
 
             getJSON(apiUrl + '/groups/list', function (data) {
-                for (var i = 0; i < data.length; i++) {
+                if (data.error) {
+                    infoContainer.innerHTML = 'Ошибка получения списка групп';
+                    return;
+                }
+                for (var i = 0; i < data.ok.length; i++) {
                     var option = document.createElement('option');
-                    option.value = data[i].id;
-                    option.innerHTML = data[i].name;
+                    option.value = data.ok[i].id;
+                    option.innerHTML = data.ok[i].name;
                     groupSelect.appendChild(option);
                 }
                 infoContainer.innerHTML = 'Выберите группу в списке';
