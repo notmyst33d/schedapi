@@ -1,11 +1,6 @@
-[main]
 port = 10000
+jwt_secret = "secret"
 
-[database]
-host = "localhost"
-port = 9042
-ssl_cert = "data/rootCa.crt"
-keyspace = "schedule"
-user = "schedule"
-password = "password"
-
+[product]
+name = "Your name here"
+logo = "logo.jpg"

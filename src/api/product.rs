@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
+use crate::data::SharedState;
 use axum::body::Body;
 use axum::extract::State;
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
-
-use crate::data::SharedState;
+use std::sync::Arc;
 
 async fn get_name(State(state): State<Arc<SharedState>>) -> &'static str {
     state.product_name

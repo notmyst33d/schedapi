@@ -1,118 +1,65 @@
-use std::sync::Arc;
-
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
-};
+use crate::{unauthorized, ApiResponse, SharedState};
+use argon2::password_hash::rand_core::OsRng;
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::extract::State;
+use axum::http::{header, StatusCode};
+use axum::response::{ErrorResponse, IntoResponse};
 use axum::routing::post;
 use axum::{Json, Router};
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use serde::Deserialize;
+use sha2::Sha256;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use crate::db::create_user;
-use crate::{
-    data::{
-        SharedState, User, UserChangePasswordRequest, UserComposite, UserTokenRequest,
-        UserTokenResponse,
-    },
-    query,
-};
-use crate::{query_one, query_one_checked};
-
-async fn post_create(
-    State(state): State<Arc<SharedState>>,
-    Json(request): Json<UserTokenRequest>,
-) -> axum::response::Result<Json<UserTokenResponse>> {
-    if state.single_user {
-        return Err("Cannot create new users on single user instance".into());
-    };
-
-    let result: Result<User, _> = query_one_checked!(
-        state.session,
-        &state.queries.get_group,
-        (&request.username,)
-    );
-    if let Ok(user) = result {
-        if user.username == request.username {
-            return Err("User with this username already exists".into());
-        };
-    };
-
-    let user = if let Ok(user) = create_user(
-        &state.session,
-        &state.queries,
-        request.username,
-        request.password,
-    )
-    .await
-    {
-        user
-    } else {
-        return Err("Cannot create a new user".into());
-    };
-
-    Ok(Json(UserTokenResponse {
-        access_token: user.access_token.to_string(),
-    }))
+#[derive(Deserialize)]
+struct PasswordRequest {
+    password: String,
 }
 
 async fn post_login(
     State(state): State<Arc<SharedState>>,
-    Json(request): Json<UserTokenRequest>,
-) -> axum::response::Result<Json<UserTokenResponse>> {
-    let user: User = query_one!(
-        &state.session,
-        &state.queries.get_user,
-        (request.username,),
-        "User doesnt exist"
-    );
-
-    let hash = if let Ok(hash) = PasswordHash::new(&user.password) {
-        hash
-    } else {
-        return Err("Password hash is invalid".into());
-    };
-
+    Json(request): Json<PasswordRequest>,
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let password = state.password.read().await;
+    let hash = PasswordHash::new(&password).unwrap();
     if let Err(_) = Argon2::default().verify_password(request.password.as_bytes(), &hash) {
-        return Err("Invalid password".into());
-    };
-
-    Ok(Json(UserTokenResponse {
-        access_token: user.access_token.to_string(),
-    }))
+        return Err(unauthorized());
+    }
+    let key: Hmac<Sha256> = Hmac::new_from_slice(state.jwt_secret.as_bytes()).unwrap();
+    let mut claims = BTreeMap::new();
+    claims.insert("sub", "schedapiadmin");
+    claims.insert("psw", &password);
+    let token_str = claims.sign_with_key(&key).unwrap();
+    Ok((
+        StatusCode::OK,
+        [(header::SET_COOKIE, format!("token={}", token_str))],
+        Json(ApiResponse::Ok(())),
+    ))
 }
 
 async fn post_change_password(
     State(state): State<Arc<SharedState>>,
-    Json(request): Json<UserChangePasswordRequest>,
-) -> axum::response::Result<&'static str> {
-    let user_composite: UserComposite = query_one!(
-        &state.session,
-        &state.queries.get_user_composite,
-        (request.access_token,),
-        "Access token is invalid"
-    );
-
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let hashed = if let Ok(result) = argon2.hash_password(request.password.as_bytes(), &salt) {
-        result.to_string()
-    } else {
-        return Err("Could not hash the password".into());
-    };
-
-    query!(
-        &state.session,
-        &state.queries.update_user_password,
-        (hashed, user_composite.username),
-        "Could not update the password"
-    );
-
-    Ok("Password changed successfully")
+    Json(request): Json<PasswordRequest>,
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let hashed = Argon2::default()
+        .hash_password(
+            request.password.as_bytes(),
+            &SaltString::generate(&mut OsRng),
+        )
+        .unwrap()
+        .to_string();
+    state.storage.update_kv("password", &hashed).await?;
+    *state.password.write().await = hashed;
+    Ok((StatusCode::OK, Json(ApiResponse::Ok(()))))
 }
 
-pub fn routes() -> Router<Arc<SharedState>> {
+pub async fn routes(state: Arc<SharedState>) -> Router<Arc<SharedState>> {
+    let mut authorized_routes = state.authorized_routes.write().await;
+    authorized_routes.push("/users/change_password");
     Router::new()
-        .route("/create", post(post_create))
         .route("/login", post(post_login))
         .route("/change_password", post(post_change_password))
 }

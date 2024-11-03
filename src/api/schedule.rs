@@ -1,20 +1,19 @@
-use std::sync::Arc;
-
-use axum::extract::Multipart;
-use axum::extract::Query;
-use axum::extract::State;
-use axum::response::Result;
-use axum::routing::get;
-use axum::routing::post;
+use crate::bad_request;
+use crate::data::*;
+use crate::SharedState;
+use axum::extract::{Multipart, Query, State};
+use axum::response::{ErrorResponse, IntoResponse, Result};
+use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use uuid::Uuid;
+use serde::Deserialize;
+use std::sync::Arc;
 
-use crate::data::{
-    EvenOddValue, Group, PortableScheduleEntry, Schedule, ScheduleEntry, ScheduleRequest,
-    SharedState, User, UserComposite,
-};
-use crate::query_one;
+#[derive(Deserialize)]
+struct ScheduleRequest {
+    week: i32,
+    group_id: i64,
+}
 
 #[utoipa::path(
     get,
@@ -28,28 +27,22 @@ use crate::query_one;
         (status = 400, description = "Incorrect query")
     ),
 )]
-pub async fn get_schedule(
+async fn get_schedule(
     State(state): State<Arc<SharedState>>,
     request: Query<ScheduleRequest>,
-) -> axum::response::Result<Json<Vec<Vec<ScheduleEntry>>>> {
-    let group: Group = query_one!(
-        state.session,
-        &state.queries.get_group,
-        (request.group_id,),
-        "Group doesnt exist"
-    );
-
-    let schedule = if let Some(schedule) = group.schedule2 {
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let group = state.storage.get_group(request.group_id).await?;
+    let schedule = if let Some(schedule) = group.schedule {
         schedule
     } else {
-        return Ok(Json(vec![vec![]]));
+        return Ok(Json(ApiResponse::Ok(vec![vec![]])));
     };
 
     let matching = schedule
         .iter()
         .filter(|e| {
-            let even = e.even_odd.value == EvenOddValue::EVEN as i32;
-            let odd = e.even_odd.value == EvenOddValue::ODD as i32;
+            let even = e.even_odd == EvenOdd::Even;
+            let odd = e.even_odd == EvenOdd::Odd;
             let mut even_odd_check = true;
             if even || odd {
                 even_odd_check = (even && request.week % 2 == 0) || (odd && request.week % 2 != 0);
@@ -102,77 +95,32 @@ pub async fn get_schedule(
         days.push(final_lessons);
     }
 
-    Ok(Json(days))
+    Ok(Json(ApiResponse::Ok(days)))
 }
 
-pub async fn post_import(
+async fn post_import(
     State(state): State<Arc<SharedState>>,
     mut multipart: Multipart,
-) -> Result<&'static str> {
-    let mut file_data: Option<Vec<u8>> = None;
-    let mut group_id_data: Option<String> = None;
-    let mut access_token_data: Option<String> = None;
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let mut file: Option<Vec<u8>> = None;
+    let mut group_id: Option<i64> = None;
 
     while let Some(field) = multipart.next_field().await? {
         let name = field.name();
         if name == Some("file") {
-            file_data = Some(field.bytes().await?.to_vec());
+            file = Some(field.bytes().await?.to_vec());
         } else if name == Some("group_id") {
-            group_id_data = Some(field.text().await?);
-        } else if name == Some("access_token") {
-            access_token_data = Some(field.text().await?);
+            group_id = Some(field.text().await?.parse::<i64>().unwrap());
         }
     }
 
-    let file = if let Some(file) = file_data {
-        file
-    } else {
-        return Err("Multipart field \"file\" not found".into());
+    let Some(file) = file else {
+        return Err(bad_request("form_field_empty_file"));
     };
 
-    let group_id = if let Some(group) = group_id_data {
-        if let Ok(group_id) = Uuid::parse_str(&group) {
-            group_id
-        } else {
-            return Err("Invalid UUID".into());
-        }
-    } else {
-        return Err("Multipart field \"group_id\" not found".into());
+    let Some(group_id) = group_id else {
+        return Err(bad_request("form_field_empty_group_id"));
     };
-
-    let access_token = if let Some(access_token) = access_token_data {
-        if let Ok(value) = Uuid::parse_str(&access_token) {
-            value
-        } else {
-            return Err("Cannot parse UUID".into());
-        }
-    } else {
-        return Err("Multipart field \"access_token\" not found".into());
-    };
-
-    let user_composite: UserComposite = query_one!(
-        state.session,
-        &state.queries.get_user_composite,
-        (access_token,),
-        "Access token is not valid"
-    );
-
-    if !state.single_user {
-        let user: User = query_one!(
-            state.session,
-            &state.queries.get_user,
-            (user_composite.username,),
-            "User not found"
-        );
-
-        if let Some(group_scope) = user.group_scope {
-            if !group_scope.contains(&group_id) {
-                return Err("This group does not belong to your group scope".into());
-            }
-        } else {
-            return Err("This group does not belong to your group scope".into());
-        };
-    }
 
     let mut reader = csv::Reader::from_reader(&*file);
     let pse: Vec<PortableScheduleEntry> = match reader.deserialize().collect::<Result<Vec<_>, _>>()
@@ -183,21 +131,17 @@ pub async fn post_import(
 
     let schedule: Vec<Schedule> = pse.into_iter().map(|v| v.into()).collect();
 
-    if let Err(error) = state
-        .session
-        .query(
-            "UPDATE groups SET schedule2 = ? WHERE id = ?",
-            (schedule, group_id),
-        )
-        .await
-    {
-        return Err(error.to_string().into());
-    };
+    state
+        .storage
+        .update_schedule(group_id, Some(sqlx::types::Json(schedule)))
+        .await?;
 
-    Ok("Import successful")
+    Ok(Json(ApiResponse::Ok(())))
 }
 
-pub fn routes() -> Router<Arc<SharedState>> {
+pub async fn routes(state: Arc<SharedState>) -> Router<Arc<SharedState>> {
+    let mut authorized_routes = state.authorized_routes.write().await;
+    authorized_routes.push("/schedule/import");
     Router::new()
         .route("/", get(get_schedule))
         .route("/import", post(post_import))

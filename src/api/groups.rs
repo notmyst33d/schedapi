@@ -1,101 +1,59 @@
+use crate::{ApiResponse, Group, SharedState};
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::{ErrorResponse, IntoResponse};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use serde::Deserialize;
 use std::sync::Arc;
 
-use axum::extract::{Json, Query, State};
-use axum::routing::{get, post};
-use axum::Router;
-use uuid::Uuid;
+#[derive(Deserialize)]
+struct GroupCreateRequest {
+    name: String,
+}
 
-use crate::data::{
-    GenericAccessTokenRequest, Group, GroupCreateRequest, GroupDeleteRequest, GroupWithoutSchedule,
-    SharedState, UserComposite,
-};
-use crate::{query, query_all, query_one};
+#[derive(Deserialize)]
+struct IdRequest {
+    id: i64,
+}
 
 async fn post_create(
     State(state): State<Arc<SharedState>>,
     Json(request): Json<GroupCreateRequest>,
-) -> axum::response::Result<Json<Group>> {
-    let user_composite: UserComposite = query_one!(
-        &state.session,
-        &state.queries.get_user_composite,
-        (request.access_token,),
-        "Access token is invalid"
-    );
-    let group = Group {
-        id: Uuid::new_v4(),
-        epoch: None,
-        name: request.name.clone(),
-        schedule2: None,
-    };
-
-    query!(
-        &state.session,
-        &state.queries.add_group,
-        &group,
-        "Cannot create a new group"
-    );
-    query!(
-        &state.session,
-        &state.queries.append_group_scope,
-        (vec![group.id], &user_composite.username),
-        "Cannot create a new group"
-    );
-
-    Ok(Json(group))
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let result = state.storage.insert_group(&request.name).await?;
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::Ok(Group {
+            id: result.last_insert_rowid(),
+            epoch: None,
+            name: request.name,
+            schedule: None,
+        })),
+    ))
 }
 
 async fn post_delete(
     State(state): State<Arc<SharedState>>,
-    Json(request): Json<GroupDeleteRequest>,
-) -> axum::response::Result<&'static str> {
-    let _: UserComposite = query_one!(
-        &state.session,
-        &state.queries.get_user_composite,
-        (request.access_token,),
-        "Access token is invalid"
-    );
-
-    query!(
-        &state.session,
-        &state.queries.delete_group,
-        (request.group_id,),
-        "Cannot delete a group"
-    );
-
-    Ok("Successfully deleted a group")
+    Json(request): Json<IdRequest>,
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    state.storage.delete_group(request.id).await?;
+    Ok((StatusCode::OK, Json(ApiResponse::Ok(()))))
 }
 
 async fn get_list(
     State(state): State<Arc<SharedState>>,
-    Query(request): Query<GenericAccessTokenRequest>,
-) -> axum::response::Result<Json<Vec<GroupWithoutSchedule>>> {
-    let groups: Vec<GroupWithoutSchedule>;
-    if state.single_user {
-        groups = query_all!(
-            &state.session,
-            &state.queries.get_all_groups_without_schedule,
-            (),
-            "Cannot get all groups"
-        );
-    } else {
-        if let None = request.access_token {
-            return Err("Invalid access token".into());
-        };
-        let _user_composite: UserComposite = query_one!(
-            &state.session,
-            &state.queries.get_user_composite,
-            (request.access_token.unwrap(),),
-            "Invalid access token"
-        );
-
-        // TODO: Query groups by group_scope
-        todo!();
-    }
-
-    Ok(Json(groups))
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::Ok(state.storage.get_groups().await?)),
+    ))
 }
 
-pub fn routes() -> Router<Arc<SharedState>> {
+pub async fn routes(state: Arc<SharedState>) -> Router<Arc<SharedState>> {
+    let mut authorized_routes = state.authorized_routes.write().await;
+    authorized_routes.push("/groups/create");
+    authorized_routes.push("/groups/delete");
     Router::new()
         .route("/create", post(post_create))
         .route("/delete", post(post_delete))

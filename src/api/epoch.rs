@@ -1,96 +1,66 @@
+use crate::bad_request;
+use crate::data::*;
+use crate::SharedState;
+use axum::extract::{Json, Query, State};
+use axum::response::ErrorResponse;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::routing::post;
+use axum::Router;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use axum::extract::{Json, Query, State};
-use axum::routing::{get, post};
-use axum::Router;
-use uuid::uuid;
+#[derive(Deserialize)]
+struct GroupRequest {
+    group_id: Option<i64>,
+}
 
-use crate::data::{
-    EpochRequest, EpochResponse, EpochUpdateRequest, Group, Internal, SharedState,
-    UserComposite,
-};
-use crate::{query, query_one};
+#[derive(Deserialize)]
+struct UpdateRequest {
+    group_id: Option<i64>,
+    epoch: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Epoch {
+    epoch: i64,
+}
 
 async fn post_update(
     State(state): State<Arc<SharedState>>,
-    Json(request): Json<EpochUpdateRequest>,
-) -> axum::response::Result<&'static str> {
-    let _: UserComposite = query_one!(
-        &state.session,
-        &state.queries.get_user_composite,
-        (request.access_token,),
-        "Access token is invalid"
-    );
-
-    match request.group_id {
-        Some(group_id) => {
-            let _ = query!(
-                &state.session,
-                &state.queries.update_group_epoch,
-                (request.epoch, group_id),
-                "Cannot update group epoch"
-            );
+    Json(request): Json<UpdateRequest>,
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    if let Some(group_id) = request.group_id {
+        state.storage.update_epoch(group_id, request.epoch).await?;
+    } else {
+        if request.epoch.is_none() {
+            return Err(bad_request("epoch_none_for_kv"));
         }
-        None => {
-            let _ = query!(
-                &state.session,
-                &state.queries.update_internal_epoch,
-                (request.epoch, uuid!("00000000-0000-0000-0000-000000000000")),
-                "Cannot update global epoch"
-            );
-        }
-    };
-
-    Ok("Successfully updated epoch")
+        state
+            .storage
+            .update_kv("epoch", &request.epoch.unwrap().to_string())
+            .await?;
+    }
+    Ok(Json(ApiResponse::Ok(())))
 }
 
 async fn get_epoch(
     State(state): State<Arc<SharedState>>,
-    Query(request): Query<EpochRequest>,
-) -> axum::response::Result<Json<EpochResponse>> {
-    match request.group_id {
-        Some(group_id) => {
-            let epoch;
-            let group: Group = query_one!(
-                &state.session,
-                &state.queries.get_group,
-                (group_id,),
-                "Cannot get group"
-            );
-
-            if let Some(group_epoch) = group.epoch {
-                epoch = group_epoch;
-            } else {
-                let internal: Internal = query_one!(
-                    &state.session,
-                    &state.queries.get_internal,
-                    (uuid!("00000000-0000-0000-0000-000000000000"),),
-                    "Cannot get internal data"
-                );
-                epoch = internal.epoch;
-            }
-
-            Ok(Json(EpochResponse { epoch }))
+    Query(request): Query<GroupRequest>,
+) -> axum::response::Result<impl IntoResponse, ErrorResponse> {
+    let mut epoch = state.storage.get_kv("epoch").await?.parse().unwrap();
+    if let Some(group_id) = request.group_id {
+        if let Some(group_epoch) = state.storage.get_group(group_id).await?.epoch {
+            epoch = group_epoch;
         }
-        None => {
-            if !state.single_user {
-                return Err("Global epoch is only available in single user mode".into());
-            }
+    };
 
-            let internal: Internal = query_one!(
-                &state.session,
-                &state.queries.get_internal,
-                (uuid!("00000000-0000-0000-0000-000000000000"),),
-                "Cannot get internal data"
-            );
-            Ok(Json(EpochResponse {
-                epoch: internal.epoch,
-            }))
-        }
-    }
+    Ok(Json(ApiResponse::Ok(Epoch { epoch })))
 }
 
-pub fn routes() -> Router<Arc<SharedState>> {
+pub async fn routes(state: Arc<SharedState>) -> Router<Arc<SharedState>> {
+    let mut authorized_routes = state.authorized_routes.write().await;
+    authorized_routes.push("/epoch/update");
     Router::new()
         .route("/", get(get_epoch))
         .route("/update", post(post_update))
