@@ -33,14 +33,28 @@
     </div>
     <div id="info-container" class="lesser-header" style="padding-bottom: 16px;">Загрузка...</div>
     <div id="schedule-container"></div>
+    <div style="padding-top: 16px;" id="support-container">
+        <span>Техподдержка:</span>
+    </div>
+    <br />
+    <a class="primary-button" href="/legacy">Легаси версия для старых браузеров</a>
     <script>
-        var start = window.location.href.indexOf('api=');
-        var end = window.location.href.indexOf('&');
-        if (end == -1) {
-            end = window.location.href.length;
+        function arg(name, def) {
+            var start = window.location.href.indexOf(name + '=');
+            if (start == -1) {
+                return def;
+            } else {
+                var end = window.location.href.indexOf('&', start);
+                if (end == -1) {
+                    end = window.location.href.length;
+                }
+                return window.location.href.substring(start + name.length + 1, end);
+            }
         }
-        var base = window.location.href.substring(start + 4, end);
-        var apiUrl = 'https://' + base;
+        var base = arg('api', '');
+        var proto = arg('proto', 'https');
+
+        var apiUrl = proto + '://' + base;
         if (window.fetch == undefined) {
             apiUrl = 'http://' + base;
         }
@@ -54,6 +68,7 @@
         var scheduleContainer = document.getElementById('schedule-container');
         var productName = document.getElementById('product-name');
         var productLogo = document.getElementById('product-logo');
+        var supportContainer = document.getElementById('support-container');
 
         var oneDay = (60 * 60 * 24) * 1000;
         var oneWeek = oneDay * 7;
@@ -89,7 +104,7 @@
                     infoContainer.innerHTML = 'Ошибка получения данных';
                 };
             }
-            xhr.send();
+            xhr.send(null);
         }
 
         function getJSON(url, cb) {
@@ -232,6 +247,12 @@
         }
 
         function finalizeSetup() {
+            getJSON(apiUrl + '/support', function (data) {
+                for (var i = 0; i < data.length; i++) {
+                    supportContainer.innerHTML += '<a class="primary-button" href="' + data[i].url + '">' + data[i].name + '</a>';
+                }
+            });
+
             get(apiUrl + '/product/name', function (data) {
                 productName.innerHTML = data;
             });
