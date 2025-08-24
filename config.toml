@@ -4,3 +4,7 @@ jwt_secret = "secret"
 [product]
 name = "Your name here"
 logo = "logo.jpg"
+
+[[support]]
+name = "Telegram"
+url = "https://t.me/your_username_here"

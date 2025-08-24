@@ -119,6 +119,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         password: RwLock::new(password),
         product_logo: fs::read(config.product.logo).await?.leak(),
         product_name: config.product.name.leak(),
+        support: config.support,
     });
     let state_router = Router::new()
         .nest("/schedule", api::schedule::routes(state.clone()).await)
@@ -126,6 +127,7 @@ async fn main() -> Result<(), Box<dyn Error + 'static>> {
         .nest("/groups", api::groups::routes(state.clone()).await)
         .nest("/product", api::product::routes())
         .nest("/epoch", api::epoch::routes(state.clone()).await)
+        .nest("/support", api::support::routes())
         .merge(SwaggerUi::new("/docs").url("/api-docs/openapi.json", api::Docs::openapi()))
         .layer(CorsLayer::permissive())
         .layer(middleware::from_fn_with_state(state.clone(), auth_layer));

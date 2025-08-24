@@ -164,12 +164,19 @@ pub struct Config {
     pub port: u16,
     pub jwt_secret: String,
     pub product: ConfigProduct,
+    pub support: Vec<SupportContact>,
 }
 
 #[derive(Deserialize)]
 pub struct ConfigProduct {
     pub name: String,
     pub logo: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SupportContact {
+    pub name: String,
+    pub url: String,
 }
 
 pub struct SharedState {
@@ -179,4 +186,5 @@ pub struct SharedState {
     pub password: RwLock<String>,
     pub product_name: &'static str,
     pub product_logo: &'static [u8],
+    pub support: Vec<SupportContact>,
 }
