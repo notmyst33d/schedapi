@@ -1,0 +1,27 @@
+http://:{$PORT:6969} {
+	@assets {
+		path /
+		path /json3.js
+		path /assets/css/main.css
+		path /logo.gif
+	}
+	handle @assets {
+		root * /srv
+		file_server
+	}
+
+	@legacy {
+		path /legacy
+		path /public*
+	}
+	handle @legacy {
+		uri strip_prefix /legacy
+		reverse_proxy {$SSR} {
+			header_down -Server
+		}
+	}
+
+	reverse_proxy {$API} {
+		header_down -Server
+	}
+}
